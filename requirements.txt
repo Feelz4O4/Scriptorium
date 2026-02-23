@@ -1,0 +1,6 @@
+# Shared runtime dependencies for this repository
+Pillow>=9.0.0
+customtkinter>=5.0.0
+
+# Optional HEIF/HEIC support used by Officina
+# pillow-heif>=0.13.0
