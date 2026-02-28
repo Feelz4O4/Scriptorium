@@ -1,6 +1,16 @@
 # folio
 
-`folio.py` converts `.png` images to `.jpg`.
+`folio.py` is deprecated and now acts as a compatibility wrapper that forwards to `Officina`.
+It keeps the old Folio arguments but runs `Officina/officina.py` under the hood with:
+
+- `--output-format jpg`
+- `--ext .png`
+- `--workers 1`
+- `--preset photo`
+- `--quality <folio --quality>`
+- `--non-recursive` by default (or `--recursive` when requested)
+
+For new usage, prefer calling `Officina` directly.
 
 ## Usage
 
@@ -8,6 +18,12 @@ From project root (input = script folder, output = `<input>/jpg`):
 
 ```bash
 python .\Folio\folio.py
+```
+
+Direct Officina equivalent:
+
+```bash
+python .\Officina\officina.py --ext .png --output-format jpg --workers 1 --preset photo --non-recursive
 ```
 
 Recursive conversion:

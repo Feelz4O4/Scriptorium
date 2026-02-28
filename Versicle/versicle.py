@@ -192,15 +192,28 @@ def iter_png_files(inputs: Iterable[str], recursive: bool) -> Iterable[Path]:
         if p.is_dir():
             pattern = "**/*" if recursive else "*"
             yield from sorted(
-                (f for f in p.glob(f"{pattern}.png") if f.is_file()),
-                key=lambda x: str(x).lower(),
-            )
-            yield from sorted(
-                (f for f in p.glob(f"{pattern}.PNG") if f.is_file()),
+                (f for f in p.glob(pattern) if f.is_file() and f.suffix.lower() == ".png"),
                 key=lambda x: str(x).lower(),
             )
         elif p.is_file() and p.suffix.lower() == ".png":
             yield p
+
+
+def _dedupe_by_resolved_path(paths: Iterable[Path]) -> list[Path]:
+    # Preserve first-seen path while deduplicating symlink/target aliases.
+    ordered: dict[str, Path] = {}
+    for path in paths:
+        try:
+            key = str(path.resolve()).lower()
+        except OSError:
+            key = str(path.absolute()).lower()
+        ordered.setdefault(key, path)
+    return list(ordered.values())
+
+
+def collect_png_files(inputs: Iterable[str], recursive: bool) -> list[Path]:
+    deduped = _dedupe_by_resolved_path(iter_png_files(inputs, recursive=recursive))
+    return sorted(deduped, key=lambda x: str(x).lower())
 
 
 def process_png(path_str: str, all_tags: bool, overwrite: bool) -> tuple[str, str, str]:
@@ -260,10 +273,7 @@ def main() -> int:
         print("--workers must be >= 1")
         return 1
 
-    png_files = sorted(
-        set(iter_png_files(args.paths, recursive=args.recursive)),
-        key=lambda x: str(x).lower(),
-    )
+    png_files = collect_png_files(args.paths, recursive=args.recursive)
     if not png_files:
         print("No PNG files found.")
         return 1

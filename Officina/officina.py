@@ -4,6 +4,7 @@ import logging
 import os
 import time
 import traceback
+from dataclasses import dataclass
 from datetime import datetime
 from multiprocessing import Pool
 
@@ -19,7 +20,7 @@ except ImportError:
 
 DEFAULT_WORKERS = 8
 DEFAULT_QUALITY = 90
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 PRESETS = {
     "web": {"quality": 80, "subsampling": 2, "progressive": True, "optimize": True},
     "photo": {"quality": 90, "subsampling": 1, "progressive": True, "optimize": True},
@@ -34,6 +35,25 @@ HEIF_EXTENSIONS = {".heic", ".heif"}
 JPEG_EXTENSIONS = {".jpg", ".jpeg"}
 OUTPUT_FORMATS = ("jpg", "webp")
 WORKER_HEIF_READY = False
+
+
+@dataclass(frozen=True)
+class ConversionTask:
+    src: str
+    dst: str
+    quality: int
+    overwrite: bool
+    progressive: bool
+    subsampling: int
+    optimize: bool
+    color_mode: str
+    keep_exif: bool
+    keep_icc: bool
+    alpha_mode: str
+    background_rgb: tuple[int, int, int]
+    min_quality: int
+    max_size_bytes: int | None
+    output_format: str
 
 
 def initialize_worker(enable_heif):
@@ -211,6 +231,20 @@ def parse_args():
         default=None,
         help="If set, reduce JPEG quality to keep output under this size (MB).",
     )
+    recursive_group = parser.add_mutually_exclusive_group()
+    recursive_group.add_argument(
+        "--recursive",
+        dest="recursive",
+        action="store_true",
+        help="Scan input folders recursively (default behavior).",
+    )
+    recursive_group.add_argument(
+        "--non-recursive",
+        dest="recursive",
+        action="store_false",
+        help="Scan only the top level of the input folder.",
+    )
+    parser.set_defaults(recursive=True)
     parser.add_argument(
         "--overwrite",
         action="store_true",
@@ -268,14 +302,31 @@ def parse_args():
     return parser.parse_args()
 
 
-def build_tasks(input_dir, output_dir, allowed_extensions, include_jpeg, output_format):
+def build_tasks(
+    input_dir,
+    output_dir,
+    allowed_extensions,
+    include_jpeg,
+    output_format,
+    recursive=True,
+):
     tasks = []
     skipped_jpeg = 0
     abs_input = os.path.abspath(input_dir)
     abs_output = os.path.abspath(output_dir)
     output_is_inside_input = os.path.commonpath([abs_input, abs_output]) == abs_input
 
-    for root, dirs, files in os.walk(abs_input, topdown=True):
+    if recursive:
+        walk_iter = os.walk(abs_input, topdown=True)
+    else:
+        top_files = []
+        for name in os.listdir(abs_input):
+            full = os.path.join(abs_input, name)
+            if os.path.isfile(full):
+                top_files.append(name)
+        walk_iter = [(abs_input, [], top_files)]
+
+    for root, dirs, files in walk_iter:
         if output_is_inside_input:
             dirs[:] = [
                 d
@@ -301,24 +352,22 @@ def build_tasks(input_dir, output_dir, allowed_extensions, include_jpeg, output_
     return tasks, skipped_jpeg
 
 
-def convert_one(task):
-    (
-        src,
-        dst,
-        quality,
-        overwrite,
-        progressive,
-        subsampling,
-        optimize,
-        color_mode,
-        keep_exif,
-        keep_icc,
-        alpha_mode,
-        background_rgb,
-        min_quality,
-        max_size_bytes,
-        output_format,
-    ) = task
+def convert_one(task: ConversionTask):
+    src = task.src
+    dst = task.dst
+    quality = task.quality
+    overwrite = task.overwrite
+    progressive = task.progressive
+    subsampling = task.subsampling
+    optimize = task.optimize
+    color_mode = task.color_mode
+    keep_exif = task.keep_exif
+    keep_icc = task.keep_icc
+    alpha_mode = task.alpha_mode
+    background_rgb = task.background_rgb
+    min_quality = task.min_quality
+    max_size_bytes = task.max_size_bytes
+    output_format = task.output_format
     try:
         pil_format = "JPEG" if output_format == "jpg" else "WEBP"
         src_ext = os.path.splitext(src)[1].lower()
@@ -416,9 +465,13 @@ def convert_one(task):
 def main():
     args = parse_args()
     input_dir = os.path.abspath(args.input)
+    if not os.path.isdir(input_dir):
+        raise SystemExit(f"Input folder not found: {input_dir}")
     output_dir = os.path.abspath(args.output or os.path.join(input_dir, args.output_format))
     workers = max(1, args.workers)
     preset = PRESETS[args.preset]
+    # We intentionally cap at 95: Pillow treats >95 as special high-quality
+    # mode with diminishing returns and much larger files.
     quality = max(1, min(95, args.quality if args.quality is not None else preset["quality"]))
     min_quality = max(1, min(95, args.min_quality))
     if min_quality > quality:
@@ -462,7 +515,7 @@ def main():
         (
             "Run started | input=%s output=%s workers=%d preset=%s quality=%d overwrite=%s "
             "extensions=%s color_mode=%s keep_exif=%s keep_icc=%s alpha_mode=%s "
-            "include_jpeg=%s min_quality=%d max_size_mb=%s background=%s output_format=%s"
+            "include_jpeg=%s recursive=%s min_quality=%d max_size_mb=%s background=%s output_format=%s"
         ),
         input_dir,
         output_dir,
@@ -476,6 +529,7 @@ def main():
         args.keep_icc,
         args.alpha_mode,
         args.include_jpeg,
+        args.recursive,
         min_quality,
         args.max_size_mb,
         args.background,
@@ -489,7 +543,12 @@ def main():
         logger.warning(warning)
 
     tasks, skipped_jpeg = build_tasks(
-        input_dir, output_dir, configured_extensions, args.include_jpeg, args.output_format
+        input_dir,
+        output_dir,
+        configured_extensions,
+        args.include_jpeg,
+        args.output_format,
+        recursive=args.recursive,
     )
     if not tasks:
         print("No matching files found.")
@@ -504,22 +563,22 @@ def main():
     downsized = 0
     total = len(tasks)
     queued_tasks = [
-        (
-            src,
-            dst,
-            quality,
-            args.overwrite,
-            preset["progressive"],
-            preset["subsampling"],
-            preset["optimize"],
-            args.color_mode,
-            args.keep_exif,
-            args.keep_icc,
-            args.alpha_mode,
-            background_rgb,
-            min_quality,
-            max_size_bytes,
-            args.output_format,
+        ConversionTask(
+            src=src,
+            dst=dst,
+            quality=quality,
+            overwrite=args.overwrite,
+            progressive=preset["progressive"],
+            subsampling=preset["subsampling"],
+            optimize=preset["optimize"],
+            color_mode=args.color_mode,
+            keep_exif=args.keep_exif,
+            keep_icc=args.keep_icc,
+            alpha_mode=args.alpha_mode,
+            background_rgb=background_rgb,
+            min_quality=min_quality,
+            max_size_bytes=max_size_bytes,
+            output_format=args.output_format,
         )
         for src, dst in tasks
     ]

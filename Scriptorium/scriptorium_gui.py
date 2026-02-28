@@ -65,10 +65,12 @@ if _VERSICLE_SCRIPT and str(_VERSICLE_SCRIPT.parent) not in sys.path:
 _versicle_import_error: str | None = None
 iter_png_files = None
 process_png = None
+collect_png_files = None
 try:
     import versicle as _vmod
     iter_png_files = _vmod.iter_png_files
     process_png = _vmod.process_png
+    collect_png_files = _vmod.collect_png_files
 except Exception as _exc:
     _versicle_import_error = str(_exc)
 
@@ -617,12 +619,29 @@ class VersicleTab(ctk.CTkFrame):
 
         self._recursive_var   = tk.BooleanVar(value=False)
         self._all_tags_var    = tk.BooleanVar(value=False)
-        self._skip_exist_var  = tk.BooleanVar(value=False)
-        self._overwrite_var   = tk.BooleanVar(value=False)
+        self._write_mode_var  = tk.StringVar(value="overwrite")
         ctk.CTkCheckBox(oi, text="Recursive",        variable=self._recursive_var,  **chk_style).pack(side="left", padx=(0, 20))
         ctk.CTkCheckBox(oi, text="All tags",         variable=self._all_tags_var,   **chk_style).pack(side="left", padx=(0, 20))
-        ctk.CTkCheckBox(oi, text="Skip existing .md", variable=self._skip_exist_var, **chk_style).pack(side="left", padx=(0, 20))
-        ctk.CTkCheckBox(oi, text="Overwrite .md",    variable=self._overwrite_var,  **chk_style).pack(side="left")
+
+        mode_row = ctk.CTkFrame(content, fg_color=PANEL_BG, corner_radius=8)
+        mode_row.pack(fill="x", pady=(0, 12))
+        mi = ctk.CTkFrame(mode_row, fg_color="transparent")
+        mi.pack(fill="x", padx=16, pady=10)
+        _mini_label(mi, "WRITE MODE", inline=True)
+        ctk.CTkRadioButton(
+            mi,
+            text="Overwrite existing .md",
+            variable=self._write_mode_var,
+            value="overwrite",
+            **chk_style,
+        ).pack(side="left", padx=(12, 20))
+        ctk.CTkRadioButton(
+            mi,
+            text="Skip existing .md",
+            variable=self._write_mode_var,
+            value="skip",
+            **chk_style,
+        ).pack(side="left")
 
         # Workers
         w_frame = ctk.CTkFrame(content, fg_color=PANEL_BG, corner_radius=8)
@@ -712,7 +731,7 @@ class VersicleTab(ctk.CTkFrame):
             "paths":      [input_dir],
             "recursive":  self._recursive_var.get(),
             "all_tags":   self._all_tags_var.get(),
-            "overwrite":  self._overwrite_var.get() and not self._skip_exist_var.get(),
+            "overwrite":  self._write_mode_var.get() == "overwrite",
             "workers":    int(self._workers_var.get()),
         }
         threading.Thread(target=self._worker, args=(opts,), daemon=True).start()
@@ -724,10 +743,7 @@ class VersicleTab(ctk.CTkFrame):
     def _worker(self, opts: dict):
         q = self._log_queue
         try:
-            png_files = sorted(
-                set(iter_png_files(opts["paths"], recursive=opts["recursive"])),
-                key=lambda x: str(x).lower(),
-            )
+            png_files = collect_png_files(opts["paths"], recursive=opts["recursive"])
             if not png_files:
                 q.put(("No PNG files found.", "fail"))
                 return
@@ -804,7 +820,7 @@ class VersicleTab(ctk.CTkFrame):
 # Main window
 # ---------------------------------------------------------------------------
 class Scriptorium(ctk.CTk):
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 
     def __init__(self):
         super().__init__()
@@ -932,15 +948,23 @@ class Scriptorium(ctk.CTk):
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+def _run_officina_embedded(forwarded_args: list[str]) -> int:
+    if _OFFICINA_SCRIPT is None:
+        raise SystemExit("officina.py not found.")
+    import officina as _officina
+
+    original_argv = sys.argv[:]
+    try:
+        sys.argv = [str(_OFFICINA_SCRIPT), *forwarded_args]
+        code = _officina.main()
+        return code if isinstance(code, int) else 0
+    finally:
+        sys.argv = original_argv
+
+
 if __name__ == "__main__":
     multiprocessing.freeze_support()   # required for PyInstaller --onefile
     if len(sys.argv) > 1 and sys.argv[1] == "--officina-cli":
-        if _OFFICINA_SCRIPT is None:
-            raise SystemExit("officina.py not found.")
-        import officina as _officina
-
-        sys.argv = [str(_OFFICINA_SCRIPT), *sys.argv[2:]]
-        code = _officina.main()
-        raise SystemExit(code if isinstance(code, int) else 0)
+        raise SystemExit(_run_officina_embedded(sys.argv[2:]))
     app = Scriptorium()
     app.mainloop()

@@ -1,13 +1,14 @@
 import argparse
-import os
+import subprocess
+import sys
 from pathlib import Path
-
-from PIL import Image, ImageOps
 
 
 def parse_args():
     script_dir = Path(__file__).resolve().parent
-    parser = argparse.ArgumentParser(description="Convert PNG files to JPG.")
+    parser = argparse.ArgumentParser(
+        description="Deprecated compatibility wrapper for PNG->JPG conversion.",
+    )
     parser.add_argument(
         "--input",
         default=str(script_dir),
@@ -37,64 +38,59 @@ def parse_args():
     return parser.parse_args()
 
 
-def iter_png_files(input_dir: Path, recursive: bool, output_dir: Path):
-    if recursive:
-        for root, dirs, files in os.walk(input_dir, topdown=True):
-            dirs[:] = [
-                d
-                for d in dirs
-                if Path(root, d).resolve() != output_dir.resolve()
-            ]
-            for filename in files:
-                if filename.lower().endswith(".png"):
-                    yield Path(root, filename)
-    else:
-        for file_path in sorted(input_dir.iterdir(), key=lambda p: p.name.lower()):
-            if file_path.is_file() and file_path.suffix.lower() == ".png":
-                yield file_path
+def _resolve_officina_script() -> Path:
+    script_dir = Path(__file__).resolve().parent
+    candidates = [
+        script_dir.parent / "Officina" / "officina.py",
+        script_dir / "officina.py",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    raise SystemExit("Could not locate Officina/officina.py for forwarding.")
 
 
-def main():
+def main() -> int:
     args = parse_args()
     input_dir = Path(args.input).resolve()
     if not input_dir.is_dir():
         raise SystemExit(f"Input folder not found: {input_dir}")
 
-    output_dir = Path(args.output).resolve() if args.output else input_dir / "jpg"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    quality = max(1, min(95, args.quality))
-
-    converted = 0
-    skipped = 0
-    failed = 0
-
-    for src in iter_png_files(input_dir, args.recursive, output_dir):
-        rel_dir = src.parent.relative_to(input_dir)
-        dst_dir = output_dir / rel_dir
-        dst_dir.mkdir(parents=True, exist_ok=True)
-        dst = dst_dir / f"{src.stem}.jpg"
-
-        if dst.exists() and not args.overwrite:
-            print(f"Skipped {src} (already exists)")
-            skipped += 1
-            continue
-
-        try:
-            with Image.open(src) as img:
-                fixed_img = ImageOps.exif_transpose(img)
-                rgb_img = fixed_img.convert("RGB")
-                rgb_img.save(dst, "JPEG", quality=quality, optimize=True)
-            print(f"Converted {src}")
-            converted += 1
-        except OSError as exc:
-            print(f"Failed {src}: {exc}")
-            failed += 1
-
     print(
-        f"Done | converted: {converted}, skipped: {skipped}, failed: {failed}, "
-        f"output: {output_dir}"
+        "[DEPRECATED] Folio is now a compatibility wrapper around Officina. "
+        "Prefer: python .\\Officina\\officina.py ..."
     )
+
+    cmd = [
+        sys.executable,
+        str(_resolve_officina_script()),
+        "--input",
+        str(input_dir),
+        "--output-format",
+        "jpg",
+        "--ext",
+        ".png",
+        "--workers",
+        "1",
+        "--preset",
+        "photo",
+        # We intentionally cap at 95: Pillow treats >95 as special high-quality
+        # mode with diminishing returns and much larger files.
+        "--quality",
+        str(max(1, min(95, args.quality))),
+    ]
+    if args.output:
+        cmd += ["--output", str(Path(args.output).resolve())]
+    if args.overwrite:
+        cmd.append("--overwrite")
+    if args.recursive:
+        cmd.append("--recursive")
+    else:
+        cmd.append("--non-recursive")
+
+    proc = subprocess.run(cmd)
+    return proc.returncode
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

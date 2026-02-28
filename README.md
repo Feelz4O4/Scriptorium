@@ -7,8 +7,8 @@ A toolkit of Python utilities for batch image conversion and PNG metadata extrac
 
 ## Tools
 
-1. `Folio`  
-PNG to JPG converter.
+1. `Folio` (deprecated compatibility wrapper)  
+Legacy PNG to JPG entrypoint that now forwards to `Officina` with PNG/JPG defaults.
 README: `Folio/README.md`
 
 2. `Officina`  
@@ -27,15 +27,15 @@ README: `Scriptorium/README.md`
 
 | Tool | CLI | GUI | Primary Input | Primary Output | Best For |
 |---|---|---|---|---|---|
-| `Folio` | Yes (`folio.py`) | No | PNG files/folders | JPG images | Simple PNG to JPG conversion |
+| `Folio` | Yes (`folio.py`, deprecated wrapper) | No | PNG files/folders | JPG images | Backward-compatible alias for Officina PNG->JPG |
 | `Officina` | Yes (`officina.py`) | Yes (`officina_gui.py`) | Images by extension filter (default `.png`, `.heic`, `.heif`; optional JPEG input) | JPG or WebP images | Faster batch conversion with quality/metadata controls |
 | `Versicle` | Yes (`versicle.py`) | Yes (`versicle_gui.py`) | PNG files/folders | Same-name `.md` sidecar files with metadata | Prompt/metadata extraction from PNG assets |
 | `Scriptorium` | No standalone processing CLI (GUI launcher only) | Yes (`scriptorium_gui.py`) | Shared input folder for Officina + Versicle tabs | Officina outputs and/or Versicle sidecars | One-window workflow for conversion + metadata extraction |
 
 ## Which Tool To Use
 
-- Use `Folio` when you only need straightforward PNG to JPG conversion.
-- Use `Officina` when you need speed, WebP support, metadata/ICC/EXIF control, or size-capping.
+- Use `Officina` for image conversion workflows, including simple PNG to JPG runs.
+- Use `Folio` only for backward compatibility with older scripts/commands.
 - Use `Versicle` when you need metadata exported to Markdown sidecars.
 - Use `Scriptorium` when you prefer a unified GUI for both Officina and Versicle tasks.
 
@@ -68,6 +68,21 @@ Optional HEIF support:
 ```bash
 pip install pillow-heif
 ```
+
+## Testing
+
+Run the CLI test suite from the repository root:
+
+```bash
+python -m pytest -q
+```
+
+The suite uses generated temporary files (no committed test assets) and focuses on
+CLI behavior for `Folio`, `Officina`, and `Versicle`.
+
+CI runs the same test suite on push and pull requests via:
+
+- `.github/workflows/pytest.yml`
 
 ## License
 

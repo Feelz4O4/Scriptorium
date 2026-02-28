@@ -19,6 +19,10 @@ TEXT_DIM = "#7a7068"
 SUCCESS = "#4a9e6a"
 FAIL = "#9e4a4a"
 
+CPU_COUNT = os.cpu_count() or 4
+DEFAULT_WORKERS = max(1, min(8, CPU_COUNT))
+MAX_WORKERS = max(1, min(16, CPU_COUNT))
+
 
 class OfficinaGUI(ctk.CTk):
     def __init__(self):
@@ -52,7 +56,7 @@ class OfficinaGUI(ctk.CTk):
 
         ctk.CTkLabel(
             title_frame,
-            text="Images -> JPG/WEBP | 8 workers",
+            text=f"Images -> JPG/WEBP | {DEFAULT_WORKERS} workers",
             font=("Courier New", 11),
             text_color=TEXT_DIM,
         ).place(relx=1.0, x=-24, rely=0.5, anchor="e")
@@ -213,12 +217,12 @@ class OfficinaGUI(ctk.CTk):
         col3 = ctk.CTkFrame(settings_inner, fg_color="transparent")
         col3.pack(side="left", fill="x", expand=True)
         self._mini_label(col3, "WORKERS")
-        self.workers_var = tk.IntVar(value=8)
+        self.workers_var = tk.IntVar(value=DEFAULT_WORKERS)
         w_row = ctk.CTkFrame(col3, fg_color="transparent")
         w_row.pack(anchor="w", pady=(4, 0))
         self.workers_label = ctk.CTkLabel(
             w_row,
-            text="8",
+            text=str(DEFAULT_WORKERS),
             font=("Courier New", 13, "bold"),
             text_color=ACCENT,
             width=20,
@@ -227,7 +231,7 @@ class OfficinaGUI(ctk.CTk):
         ctk.CTkSlider(
             w_row,
             from_=1,
-            to=16,
+            to=MAX_WORKERS,
             variable=self.workers_var,
             width=100,
             button_color=ACCENT,

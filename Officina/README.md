@@ -64,6 +64,12 @@ Include only specific extensions:
 python .\Officina\officina.py --ext .png --ext .heic --ext .heif
 ```
 
+Scan only the top-level input folder (non-recursive):
+
+```bash
+python .\Officina\officina.py --non-recursive
+```
+
 Include JPEG inputs:
 
 ```bash
@@ -137,6 +143,8 @@ GUI notes:
 - `--min-quality`: Minimum JPEG quality floor used by size-capping (default: `40`)
 - `--max-size-mb`: Target max output size per image in MB (optional)
 - `--overwrite`: Reconvert even if destination is up to date
+- `--recursive`: Scan input folders recursively (default behavior)
+- `--non-recursive`: Scan only the top level of the input folder
 - `--include-jpeg`: Allow processing `.jpg/.jpeg` inputs
 - `--log-file`: Log file path (default: timestamped file in output folder)
 - `--ext`: Input extension filter; repeatable (default: `.png`, `.heic`, `.heif`)

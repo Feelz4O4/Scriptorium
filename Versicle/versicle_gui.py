@@ -20,6 +20,7 @@ import customtkinter as ctk
 _WORKER_IMPORT_ERROR = None
 iter_png_files = None
 process_png = None
+collect_png_files = None
 _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
@@ -28,6 +29,7 @@ try:
     import versicle as _mod
     iter_png_files = _mod.iter_png_files
     process_png = _mod.process_png
+    collect_png_files = _mod.collect_png_files
 except Exception as exc:  # pragma: no cover
     _WORKER_IMPORT_ERROR = str(exc)
 
@@ -354,10 +356,7 @@ class App(ctk.CTk):
             workers = opts["workers"]
             recursive = opts["recursive"]
 
-            png_files = sorted(
-                set(iter_png_files(paths, recursive=recursive)),
-                key=lambda x: str(x).lower(),
-            )
+            png_files = collect_png_files(paths, recursive=recursive)
 
             if not png_files:
                 q.put(("No PNG files found.", "failed"))
