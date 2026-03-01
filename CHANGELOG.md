@@ -3,13 +3,10 @@
 All notable changes to this repository are documented in this file.
 This project follows a versioned changelog format.
 
-## [Unreleased]
-
 ## [1.1.0] - 2026-03-01
 
 ### Added
 
-- MIT `LICENSE`.
 - GUI screenshots embedded in tool READMEs.
 - Root `tests/` suite with `pytest` coverage for `Folio`, `Officina`, and `Versicle`.
 - `.github/workflows/pytest.yml` to run tests on push and pull requests.
@@ -33,6 +30,7 @@ This project follows a versioned changelog format.
 
 ### Added
 
+- MIT `LICENSE`.
 - Root `README.md` with tool index, comparison table, quick-start commands, and requirements.
 - `Scriptorium/README.md` to document the unified GUI tool.
 - Root `.gitignore` for Python, build, cache, logs, IDE, and OS artifacts.
