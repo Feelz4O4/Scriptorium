@@ -3,6 +3,8 @@
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
 
+![Scriptorium Officina Tab](./Scriptorium/scriptorium_o.png)
+
 A toolkit of Python utilities for batch image conversion and PNG metadata extraction.
 
 ## Tools
@@ -49,6 +51,36 @@ python .\Officina\officina.py --help
 python .\Versicle\versicle.py --help
 python .\Scriptorium\scriptorium_gui.py
 ```
+
+## Screenshot Examples
+
+<details>
+<summary>Scriptorium - Officina Tab</summary>
+
+![Scriptorium Officina Tab](./Scriptorium/scriptorium_o.png)
+
+</details>
+
+<details>
+<summary>Scriptorium - Versicle Tab</summary>
+
+![Scriptorium Versicle Tab](./Scriptorium/scriptorium_v.png)
+
+</details>
+
+<details>
+<summary>Officina GUI</summary>
+
+![Officina GUI](./Officina/officina.png)
+
+</details>
+
+<details>
+<summary>Versicle GUI</summary>
+
+![Versicle GUI](./Versicle/versicle.png)
+
+</details>
 
 ## Requirements
 

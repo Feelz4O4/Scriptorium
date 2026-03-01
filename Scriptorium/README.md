@@ -48,8 +48,8 @@ Versicle tab:
 
 - Provides one shared input folder for both tools.
 - Includes two tabs:
-- `Officina`: exposes conversion settings and runs `officina.py` in the background.
-- `Versicle`: extracts metadata to same-name Markdown files with optional recursion and workers.
+- `Officina`: exposes conversion settings (including dry-run) and runs `officina.py` in the background.
+- `Versicle`: extracts metadata to same-name Markdown files with optional recursion/workers and live progress updates.
 - Shows startup diagnostics (version and optional HEIF plugin availability).
 
 ## Notes

@@ -166,6 +166,8 @@ def _build_officina_cmd(cfg: dict) -> list[str]:
         args += ["--log-file", cfg["log_file"]]
     if cfg["overwrite"]:
         args.append("--overwrite")
+    if cfg["dry_run"]:
+        args.append("--dry-run")
     if cfg["include_jpeg"]:
         args.append("--include-jpeg")
     if cfg["keep_exif"]:
@@ -303,16 +305,30 @@ class OfficinaTab(ctk.CTkFrame):
             fg_color=ACCENT, hover_color=ACCENT_DIM, text_color=TEXT,
             font=("Courier New", 12), border_color="#555", checkmark_color=DARK_BG,
         )
+        radio_style = dict(
+            fg_color=ACCENT,
+            hover_color=ACCENT_DIM,
+            text_color=TEXT,
+            font=("Courier New", 12),
+        )
+        radio_style = dict(
+            fg_color=ACCENT,
+            hover_color=ACCENT_DIM,
+            text_color=TEXT,
+            font=("Courier New", 12),
+        )
         opts_frame = ctk.CTkFrame(content, fg_color=PANEL_BG, corner_radius=8)
         opts_frame.pack(fill="x", pady=(0, 12))
         oi = ctk.CTkFrame(opts_frame, fg_color="transparent")
         oi.pack(fill="x", padx=16, pady=10)
 
         self._overwrite_var     = tk.BooleanVar(value=False)
+        self._dry_run_var       = tk.BooleanVar(value=False)
         self._include_jpeg_var  = tk.BooleanVar(value=False)
         self._keep_exif_var     = tk.BooleanVar(value=False)
         self._keep_icc_var      = tk.BooleanVar(value=False)
         ctk.CTkCheckBox(oi, text="Overwrite existing",  variable=self._overwrite_var,    **chk_style).pack(side="left", padx=(0, 20))
+        ctk.CTkCheckBox(oi, text="Dry run",             variable=self._dry_run_var,      **chk_style).pack(side="left", padx=(0, 20))
         ctk.CTkCheckBox(oi, text="Include JPEG input",  variable=self._include_jpeg_var, **chk_style).pack(side="left", padx=(0, 20))
         ctk.CTkCheckBox(oi, text="Keep EXIF",           variable=self._keep_exif_var,    **chk_style).pack(side="left", padx=(0, 20))
         ctk.CTkCheckBox(oi, text="Keep ICC profile",    variable=self._keep_icc_var,     **chk_style).pack(side="left")
@@ -457,6 +473,7 @@ class OfficinaTab(ctk.CTkFrame):
             "quality":          int(self._quality_var.get()),
             "workers":          int(self._workers_var.get()),
             "overwrite":        self._overwrite_var.get(),
+            "dry_run":          self._dry_run_var.get(),
             "include_jpeg":     self._include_jpeg_var.get(),
             "keep_exif":        self._keep_exif_var.get(),
             "keep_icc":         self._keep_icc_var.get(),
@@ -517,7 +534,7 @@ class OfficinaTab(ctk.CTkFrame):
                     line = raw.rstrip()
                     lines.append(line)
                     level = "default"
-                    if "Converted " in line or "Done in " in line:
+                    if "Converted " in line or "Done in " in line or "Dry run done in " in line:
                         level = "success"
                     elif "Failed " in line or "ERROR" in line or "Traceback" in line:
                         level = "fail"
@@ -616,6 +633,12 @@ class VersicleTab(ctk.CTkFrame):
             fg_color=ACCENT, hover_color=ACCENT_DIM, text_color=TEXT,
             font=("Courier New", 12), border_color="#555", checkmark_color=DARK_BG,
         )
+        radio_style = dict(
+            fg_color=ACCENT,
+            hover_color=ACCENT_DIM,
+            text_color=TEXT,
+            font=("Courier New", 12),
+        )
 
         self._recursive_var   = tk.BooleanVar(value=False)
         self._all_tags_var    = tk.BooleanVar(value=False)
@@ -633,14 +656,14 @@ class VersicleTab(ctk.CTkFrame):
             text="Overwrite existing .md",
             variable=self._write_mode_var,
             value="overwrite",
-            **chk_style,
+            **radio_style,
         ).pack(side="left", padx=(12, 20))
         ctk.CTkRadioButton(
             mi,
             text="Skip existing .md",
             variable=self._write_mode_var,
             value="skip",
-            **chk_style,
+            **radio_style,
         ).pack(side="left")
 
         # Workers
@@ -830,8 +853,8 @@ class Scriptorium(ctk.CTk):
                 self.iconbitmap(str(_APP_ICON))
             except Exception:
                 pass
-        self.geometry("800x960")
-        self.minsize(740, 800)
+        self.geometry("960x1040")
+        self.minsize(900, 880)
         self.resizable(True, True)
         self.configure(fg_color=DARK_BG)
 

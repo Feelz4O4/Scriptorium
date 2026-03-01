@@ -251,6 +251,11 @@ def parse_args():
         help="Overwrite existing output files, ignoring mtime checks.",
     )
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="List planned conversions without writing output files.",
+    )
+    parser.add_argument(
         "--include-jpeg",
         action="store_true",
         help="Allow processing .jpg/.jpeg input files.",
@@ -309,6 +314,7 @@ def build_tasks(
     include_jpeg,
     output_format,
     recursive=True,
+    create_dirs=True,
 ):
     tasks = []
     skipped_jpeg = 0
@@ -346,10 +352,19 @@ def build_tasks(
             target_name = os.path.splitext(filename)[0] + f".{output_format}"
             rel_dir = os.path.relpath(root, abs_input)
             dst_dir = abs_output if rel_dir == "." else os.path.join(abs_output, rel_dir)
-            os.makedirs(dst_dir, exist_ok=True)
+            if create_dirs:
+                os.makedirs(dst_dir, exist_ok=True)
             dst = os.path.join(dst_dir, target_name)
             tasks.append((src, dst))
     return tasks, skipped_jpeg
+
+
+def should_skip_existing(src: str, dst: str, overwrite: bool) -> bool:
+    if overwrite or not os.path.exists(dst):
+        return False
+    src_mtime = os.path.getmtime(src)
+    dst_mtime = os.path.getmtime(dst)
+    return dst_mtime >= src_mtime
 
 
 def convert_one(task: ConversionTask):
@@ -373,11 +388,8 @@ def convert_one(task: ConversionTask):
         src_ext = os.path.splitext(src)[1].lower()
         if src_ext in HEIF_EXTENSIONS and not WORKER_HEIF_READY:
             return ("failed", f"Failed {src} (HEIF support is not initialized)", None)
-        if os.path.exists(dst) and not overwrite:
-            src_mtime = os.path.getmtime(src)
-            dst_mtime = os.path.getmtime(dst)
-            if dst_mtime >= src_mtime:
-                return ("skipped", f"Skipped {src} (destination is up to date)", None)
+        if should_skip_existing(src, dst, overwrite):
+            return ("skipped", f"Skipped {src} (destination is up to date)", None)
         with Image.open(src) as img:
             if output_format == "webp":
                 working_img, output_icc, exif_blob = prepare_for_webp(img, color_mode)
@@ -484,7 +496,8 @@ def main():
     except ValueError as exc:
         raise SystemExit(f"Invalid --background color: {args.background}") from exc
     background_rgb = background_rgba[:3]
-    os.makedirs(output_dir, exist_ok=True)
+    if not args.dry_run:
+        os.makedirs(output_dir, exist_ok=True)
 
     configured_extensions = normalize_extensions(args.ext or [".png", ".heic", ".heif"])
     if args.include_jpeg:
@@ -496,26 +509,30 @@ def main():
         print("No usable input extensions configured.")
         return
 
-    if args.log_file:
-        log_file = os.path.abspath(args.log_file)
-    else:
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = os.path.join(output_dir, f"officina_{args.output_format}_{stamp}.log")
-    log_dir = os.path.dirname(log_file)
-    if log_dir:
-        os.makedirs(log_dir, exist_ok=True)
+    log_file = None
     logger = logging.getLogger("officina")
     logger.handlers.clear()
     logger.setLevel(logging.INFO)
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    logger.addHandler(file_handler)
+    if args.dry_run:
+        logger.addHandler(logging.NullHandler())
+    else:
+        if args.log_file:
+            log_file = os.path.abspath(args.log_file)
+        else:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = os.path.join(output_dir, f"officina_{args.output_format}_{stamp}.log")
+        log_dir = os.path.dirname(log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        logger.addHandler(file_handler)
     logger.propagate = False
     logger.info(
         (
             "Run started | input=%s output=%s workers=%d preset=%s quality=%d overwrite=%s "
             "extensions=%s color_mode=%s keep_exif=%s keep_icc=%s alpha_mode=%s "
-            "include_jpeg=%s recursive=%s min_quality=%d max_size_mb=%s background=%s output_format=%s"
+            "include_jpeg=%s recursive=%s dry_run=%s min_quality=%d max_size_mb=%s background=%s output_format=%s"
         ),
         input_dir,
         output_dir,
@@ -530,6 +547,7 @@ def main():
         args.alpha_mode,
         args.include_jpeg,
         args.recursive,
+        args.dry_run,
         min_quality,
         args.max_size_mb,
         args.background,
@@ -549,11 +567,35 @@ def main():
         args.include_jpeg,
         args.output_format,
         recursive=args.recursive,
+        create_dirs=not args.dry_run,
     )
     if not tasks:
         print("No matching files found.")
         logger.info("No matching files found for extensions: %s", sorted(configured_extensions))
-        print(f"Log file: {log_file}")
+        if log_file:
+            print(f"Log file: {log_file}")
+        return
+
+    if args.dry_run:
+        started = time.time()
+        would_convert = 0
+        would_skip = 0
+        total = len(tasks)
+        for index, (src, dst) in enumerate(tasks, start=1):
+            if should_skip_existing(src, dst, args.overwrite):
+                would_skip += 1
+                print(f"[{index}/{total}] Would skip {src} (destination is up to date)")
+                continue
+            would_convert += 1
+            print(f"[{index}/{total}] Would convert {src} -> {dst}")
+        elapsed = time.time() - started
+        summary = (
+            f"Dry run done in {elapsed:.2f}s | total: {total}, would_convert: {would_convert}, "
+            f"would_skip: {would_skip}, skipped_jpeg: {skipped_jpeg}, workers: {workers}, "
+            f"format: {args.output_format}"
+        )
+        print(summary)
+        logger.info(summary)
         return
 
     started = time.time()
@@ -612,7 +654,8 @@ def main():
     )
     print(summary)
     logger.info(summary)
-    print(f"Log file: {log_file}")
+    if log_file:
+        print(f"Log file: {log_file}")
 
 
 if __name__ == "__main__":

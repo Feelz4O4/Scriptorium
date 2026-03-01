@@ -69,6 +69,7 @@ GUI notes:
 - Add folders/files to input list.
 - Supports recursive mode, all-tags mode, skip-existing mode, and worker count.
 - Streams run output to the log panel.
+- Shows a live progress bar during processing.
 
 ## CLI Arguments
 

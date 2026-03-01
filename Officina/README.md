@@ -58,6 +58,12 @@ Overwrite existing JPG files:
 python .\Officina\officina.py --overwrite
 ```
 
+Preview planned conversions without writing files:
+
+```bash
+python .\Officina\officina.py --dry-run
+```
+
 Include only specific extensions:
 
 ```bash
@@ -127,7 +133,7 @@ python .\Officina\officina_gui.py
 GUI notes:
 
 - Uses `customtkinter` with a dark theme.
-- Exposes preset/quality/workers, output format, overwrite, EXIF/ICC, color mode, alpha mode, extensions, and log file path.
+- Exposes preset/quality/workers, output format, overwrite, dry-run, EXIF/ICC, color mode, alpha mode, extensions, and log file path.
 - Executes the CLI script in the background and streams live log/progress.
 - Runs startup diagnostics in the log panel (CLI version + HEIF plugin status).
 - Updates title bar with detected build version (`officina_gui.exe vX.Y.Z`).
@@ -143,6 +149,7 @@ GUI notes:
 - `--min-quality`: Minimum JPEG quality floor used by size-capping (default: `40`)
 - `--max-size-mb`: Target max output size per image in MB (optional)
 - `--overwrite`: Reconvert even if destination is up to date
+- `--dry-run`: List planned conversions/skips without writing output files
 - `--recursive`: Scan input folders recursively (default behavior)
 - `--non-recursive`: Scan only the top level of the input folder
 - `--include-jpeg`: Allow processing `.jpg/.jpeg` inputs

@@ -30,8 +30,8 @@ class OfficinaGUI(ctk.CTk):
         self.app_name = "officina_gui"
         self.detected_version = "unknown"
         self.title(f"{self.app_name}.exe")
-        self.geometry("760x900")
-        self.minsize(720, 780)
+        self.geometry("900x980")
+        self.minsize(860, 860)
         self.resizable(True, True)
         self.configure(fg_color=DARK_BG)
 
@@ -246,6 +246,7 @@ class OfficinaGUI(ctk.CTk):
         opts_inner.pack(fill="x", padx=16, pady=10)
 
         self.overwrite_var = tk.BooleanVar(value=False)
+        self.dry_run_var = tk.BooleanVar(value=False)
         self.include_jpeg_var = tk.BooleanVar(value=False)
         self.keep_exif_var = tk.BooleanVar(value=False)
         self.keep_icc_var = tk.BooleanVar(value=False)
@@ -263,6 +264,12 @@ class OfficinaGUI(ctk.CTk):
             opts_inner,
             text="Overwrite existing",
             variable=self.overwrite_var,
+            **check_style,
+        ).pack(side="left", padx=(0, 20))
+        ctk.CTkCheckBox(
+            opts_inner,
+            text="Dry run",
+            variable=self.dry_run_var,
             **check_style,
         ).pack(side="left", padx=(0, 20))
         ctk.CTkCheckBox(
@@ -559,6 +566,7 @@ class OfficinaGUI(ctk.CTk):
             "quality": int(self.quality_var.get()),
             "workers": int(self.workers_var.get()),
             "overwrite": self.overwrite_var.get(),
+            "dry_run": self.dry_run_var.get(),
             "include_jpeg": self.include_jpeg_var.get(),
             "keep_exif": self.keep_exif_var.get(),
             "keep_icc": self.keep_icc_var.get(),
@@ -634,6 +642,8 @@ class OfficinaGUI(ctk.CTk):
             cmd += ["--log-file", config["log_file"]]
         if config["overwrite"]:
             cmd.append("--overwrite")
+        if config["dry_run"]:
+            cmd.append("--dry-run")
         if config["include_jpeg"]:
             cmd.append("--include-jpeg")
         if config["keep_exif"]:
@@ -661,7 +671,7 @@ class OfficinaGUI(ctk.CTk):
                     line = line.rstrip()
                     lines.append(line)
                     level = "default"
-                    if "Converted " in line or "Done in " in line:
+                    if "Converted " in line or "Done in " in line or "Dry run done in " in line:
                         level = "success"
                     elif "Failed " in line or "ERROR" in line or "Traceback" in line:
                         level = "fail"

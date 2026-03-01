@@ -104,3 +104,14 @@ def test_officina_max_size_mb_writes_under_limit(tmp_path: Path):
     assert out.exists()
     assert out.stat().st_size <= int(max_size_mb * 1024 * 1024)
 
+
+def test_officina_dry_run_lists_without_writing_outputs(tmp_path: Path):
+    input_dir = tmp_path / "in"
+    output_dir = tmp_path / "out"
+    write_minimal_png(input_dir / "a.png")
+
+    proc = run_cli(_officina_base_args(input_dir, output_dir) + ["--dry-run"])
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "Would convert" in proc.stdout
+    assert "Dry run done in" in proc.stdout
+    assert not (output_dir / "a.jpg").exists()

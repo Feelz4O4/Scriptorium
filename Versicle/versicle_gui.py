@@ -258,6 +258,16 @@ class App(ctk.CTk):
         )
         self._status_label.pack(side="left", padx=8)
 
+        self._progress = ctk.CTkProgressBar(
+            self,
+            fg_color="#222222",
+            progress_color=ACCENT,
+            height=6,
+            corner_radius=3,
+        )
+        self._progress.pack(fill="x", padx=14, pady=(8, 2))
+        self._progress.set(0)
+
         ctk.CTkLabel(self, text="Log", font=FONT_HEAD, anchor="w").pack(
             fill="x", padx=16, pady=(10, 2)
         )
@@ -331,6 +341,7 @@ class App(ctk.CTk):
         self._btn_run.configure(state="disabled")
         self._btn_stop.configure(state="normal")
         self._status_label.configure(text="Running...")
+        self._progress.set(0)
 
         opts = {
             "recursive": self._var_recursive.get(),
@@ -362,9 +373,18 @@ class App(ctk.CTk):
                 q.put(("No PNG files found.", "failed"))
                 return
 
-            q.put((f"Found {len(png_files)} PNG file(s). Starting...\n", "head"))
+            total = len(png_files)
+            q.put((f"Found {total} PNG file(s). Starting...\n", "head"))
 
             wrote_n = skipped_n = failed_n = 0
+            done_count = 0
+
+            def _tick(done: int):
+                self.after(0, self._progress.set, done / total)
+                self.after(
+                    0,
+                    lambda d=done: self._status_label.configure(text=f"Processing {d}/{total}..."),
+                )
 
             def _emit(md_or_png: str, status: str, error: str):
                 nonlocal wrote_n, skipped_n, failed_n
@@ -386,6 +406,8 @@ class App(ctk.CTk):
                         str(png_path), all_tags, overwrite
                     )
                     _emit(md_or_png, status, error)
+                    done_count += 1
+                    _tick(done_count)
             else:
                 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -407,6 +429,8 @@ class App(ctk.CTk):
                             results.append((idx, *fut.result()))
                         except Exception as exc:  # pragma: no cover
                             results.append((idx, str(png_files[idx]), "failed", str(exc)))
+                        done_count += 1
+                        _tick(done_count)
                 finally:
                     executor.shutdown(wait=False, cancel_futures=True)
 
@@ -420,6 +444,8 @@ class App(ctk.CTk):
                     "head",
                 )
             )
+            if self._running:
+                self.after(0, self._progress.set, 1.0)
         except Exception as exc:  # pragma: no cover
             q.put((f"Unexpected error: {exc}", "failed"))
         finally:

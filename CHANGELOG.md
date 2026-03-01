@@ -11,6 +11,7 @@ This project follows a versioned changelog format.
 - Root `tests/` suite with `pytest` coverage for `Folio`, `Officina`, and `Versicle`.
 - `.github/workflows/pytest.yml` to run tests on push and pull requests.
 - Root `README.md` testing section with local and CI guidance.
+- `Officina` `--dry-run` mode to preview planned conversions without writing files.
 
 ### Changed
 
@@ -24,6 +25,10 @@ This project follows a versioned changelog format.
 - `Versicle` PNG collection now avoids case-variant duplicate scans and uses stable resolved-path deduplication.
 - `Scriptorium` Versicle tab now uses mutually exclusive write modes (`Overwrite` vs `Skip existing`).
 - `Scriptorium` embedded Officina forwarding now uses a dedicated helper (`_run_officina_embedded`).
+- Standalone `Versicle` GUI now shows live progress during processing.
+- `Officina` GUI and `Scriptorium` Officina tab now expose a `Dry run` toggle.
+- `Officina` dry-run skip decisions now reuse shared skip logic for parity with conversion runs.
+- Fixed a `Scriptorium` startup crash caused by unsupported `CTkRadioButton` styling kwargs.
 - `Officina` and `Scriptorium` versions bumped to `1.1.0`.
 
 ## [1.0.0] - 2026-02-22
